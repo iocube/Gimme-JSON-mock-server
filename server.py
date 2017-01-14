@@ -79,7 +79,6 @@ def endpoint_handler_wrapper(endpoint_id):
         }
 
         """
-
         sandbox = {
             'code': built_in_code + code,
             'context': {
@@ -89,7 +88,8 @@ def endpoint_handler_wrapper(endpoint_id):
                         'queryParams': query_params,
                         'method': request.method,
                         'path': request.path,
-                        'fullPath': request.full_path
+                        'fullPath': request.full_path,
+                        'params': kwargs
                     },
                     'storage': {storage['_id']: json.loads(storage['value']) for storage in storage_list},
                     'response': {}
