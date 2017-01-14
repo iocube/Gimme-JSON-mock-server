@@ -1,0 +1,6 @@
+.venv/
+*.pyc
+htmlcov/
+.coverage
+.idea/
+.env
