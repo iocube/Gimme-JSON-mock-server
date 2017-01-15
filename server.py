@@ -9,21 +9,13 @@ from urllib.error import HTTPError
 from settings import Settings
 from decorators import crossdomain
 import storageDAO
+import endpointDAO
 
 connection = pymongo.MongoClient(Settings.DATABASE_HOST, Settings.DATABASE_PORT)
 database = connection[Settings.DATABASE_NAME]
 
 application = flask.Flask(__name__)
 application.config.from_object(Settings)
-
-
-def get_code_to_execute(endpoint):
-    method = request.method.lower()
-    return endpoint[method]
-
-
-def find_endpoint_by_id(endpoint_id):
-    return database.endpoints.find_one({'_id': endpoint_id})
 
 
 @application.route('/server/', methods=['DELETE'])
@@ -47,8 +39,8 @@ def endpoint_handler_wrapper(endpoint_id):
     def endpoint_handler(*args, **kwargs):
         print("{method} {path}".format(method=request.method, path=request.path))
 
-        endpoint = find_endpoint_by_id(endpoint_id)
-        code = get_code_to_execute(endpoint)
+        endpoint = endpointDAO.find_one(endpoint_id)
+        code = endpoint[request.method.lower()]
         storage_list = storageDAO.find_many(endpoint['storage'])
 
         query_params = {}
@@ -110,7 +102,7 @@ def endpoint_handler_wrapper(endpoint_id):
 
 if __name__ == '__main__':
     # register all endpoints
-    all_endpoints = database.endpoints.find()
+    all_endpoints = endpointDAO.find()
 
     for each in all_endpoints:
         application.add_url_rule(
