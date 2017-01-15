@@ -4,11 +4,11 @@ import flask
 import urllib
 import pymongo
 from flask import Response, request
-from pymongo import ReturnDocument
 from urllib.error import HTTPError
 
 from settings import Settings
 from decorators import crossdomain
+import storageDAO
 
 connection = pymongo.MongoClient(Settings.DATABASE_HOST, Settings.DATABASE_PORT)
 database = connection[Settings.DATABASE_NAME]
@@ -24,24 +24,6 @@ def get_code_to_execute(endpoint):
 
 def find_endpoint_by_id(endpoint_id):
     return database.endpoints.find_one({'_id': endpoint_id})
-
-
-def find_multiple_storages_by_ids(ids):
-    return [
-        storage for storage in database.storage.find(
-            {
-                '_id': {'$in': ids}
-            }
-        )
-    ]
-
-
-def save_to_storage(storage_id, new_value):
-    database.storage.find_one_and_update(
-        {'_id': storage_id},
-        {'$set': {'value': json.dumps(new_value)}},
-        return_document=ReturnDocument.AFTER
-    )
 
 
 @application.route('/server/', methods=['DELETE'])
@@ -67,7 +49,7 @@ def endpoint_handler_wrapper(endpoint_id):
 
         endpoint = find_endpoint_by_id(endpoint_id)
         code = get_code_to_execute(endpoint)
-        storage_list = find_multiple_storages_by_ids(endpoint['storage'])
+        storage_list = storageDAO.find_many(endpoint['storage'])
 
         query_params = {}
         for arg in request.args:
@@ -118,7 +100,7 @@ def endpoint_handler_wrapper(endpoint_id):
                             mimetype='application/json')
 
         for storage_id, storage_value in sandbox_response['context']['gimme']['storage'].items():
-            save_to_storage(storage_id, storage_value)
+            storageDAO.save(storage_id, storage_value)
 
         return Response(response=json.dumps(sandbox_response['context']['gimme']['response']['response']),
                         status=sandbox_response['context']['gimme']['response']['status'],
