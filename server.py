@@ -1,13 +1,13 @@
 import json
 import os
 import flask
-import urllib
 import pymongo
 from flask import Response, request
 from urllib.error import HTTPError
 
 from settings import Settings
 from decorators import crossdomain
+from jse import Code, Context
 import storageDAO
 import endpointDAO
 
@@ -37,15 +37,9 @@ def restart():
 def endpoint_handler_wrapper(endpoint_id):
     @crossdomain(methods=['OPTIONS', 'GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
     def endpoint_handler(*args, **kwargs):
-        print("{method} {path}".format(method=request.method, path=request.path))
-
         endpoint = endpointDAO.find_one(endpoint_id)
         code = endpoint[request.method.lower()]
         storage_list = storageDAO.find_many(endpoint['storage'])
-
-        query_params = {}
-        for arg in request.args:
-            query_params[arg] = request.args.getlist(arg)
 
         built_in_code = """
         function response(status, resp) {
@@ -53,49 +47,20 @@ def endpoint_handler_wrapper(endpoint_id):
         }
 
         """
-        sandbox = {
-            'code': built_in_code + code,
-            'context': {
-                'gimme': {
-                    'payload': request.get_json(silent=True) or {},
-                    'request': {
-                        'queryParams': query_params,
-                        'method': request.method,
-                        'path': request.path,
-                        'fullPath': request.full_path,
-                        'params': kwargs
-                    },
-                    'storage': {storage['_id']: json.loads(storage['value']) for storage in storage_list},
-                    'response': {}
-                }
-            },
-            'language': 'javascript',
-            'modules': []
-        }
-
-        sandbox_json = json.dumps(sandbox)
-
-        request_params = urllib.request.Request(
-            url='http://{jse_host}:{jse_port}'.format(jse_host=Settings.JSE_HOST, jse_port=Settings.JSE_PORT),
-            data=bytes(sandbox_json, encoding='utf-8'),
-            method='POST',
-            headers={'Content-type': 'application/json'}
-        )
+        code_execution_context = Context(request, kwargs, storage_list)
 
         try:
-            f = urllib.request.urlopen(request_params)
-            sandbox_response = json.loads(f.read().decode('utf-8'))
-            f.close()
+            execution_result = Code(built_in_code + code, code_execution_context, []).run()
         except HTTPError as error:
             return Response(response=error.read().decode('utf-8'),
                             status=200,
                             mimetype='application/json')
 
-        for storage_id, storage_value in sandbox_response['context']['gimme']['storage'].items():
+        for storage_id, storage_value in execution_result.storage:
             storageDAO.save(storage_id, storage_value)
 
-        return Response(response=json.dumps(sandbox_response['context']['gimme']['response']['response']),
-                        status=sandbox_response['context']['gimme']['response']['status'],
+        return Response(response=json.dumps(execution_result.response),
+                        status=execution_result.status,
                         mimetype='application/json')
 
     return endpoint_handler
