@@ -4,12 +4,14 @@ import flask
 import pymongo
 from flask import Response, request
 from urllib.error import HTTPError
+from string import Template
 
 from settings import Settings
 from decorators import crossdomain
-from jse import Code, Context
+from jse import Code
 import storageDAO
 import endpointDAO
+import js_code
 
 connection = pymongo.MongoClient(Settings.DATABASE_HOST, Settings.DATABASE_PORT)
 database = connection[Settings.DATABASE_NAME]
@@ -17,6 +19,7 @@ database = connection[Settings.DATABASE_NAME]
 application = flask.Flask(__name__)
 application.config.from_object(Settings)
 
+js_code_template = Template(js_code.code)
 
 @application.route('/server/', methods=['DELETE'])
 def restart():
@@ -40,17 +43,30 @@ def endpoint_handler_wrapper(endpoint_id):
         endpoint = endpointDAO.find_one(endpoint_id)
         code = endpoint[request.method.lower()]
         storage_list = storageDAO.find_many(endpoint['storage'])
+        query_params = {arg: request.args.getlist(arg) for arg in request.args}
 
-        built_in_code = """
-        function response(status, resp) {
-            gimme.response = {"status": status, "response": resp};
+        code_execution_context = {
+            '$g': {
+                'storage': {storage['_id']: json.loads(storage['value']) for storage in storage_list},
+                'response': {
+                    'status': 200,
+                    'value': {}
+                }
+            }
         }
 
-        """
-        code_execution_context = Context(request, kwargs, storage_list)
+        code_to_execute = js_code_template.substitute(**{
+            'query_params': query_params,
+            'method': request.method,
+            'path': request.path,
+            'full_path': request.full_path,
+            'payload': request.get_json(silent=True) or {},
+            'params': kwargs,
+            'code': code
+        })
 
         try:
-            execution_result = Code(built_in_code + code, code_execution_context, []).run()
+            execution_result = Code(code=code_to_execute, context=code_execution_context, modules=[]).run()
         except HTTPError as error:
             return Response(response=error.read().decode('utf-8'),
                             status=200,
