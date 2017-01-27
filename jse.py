@@ -1,14 +1,12 @@
 import urllib
 import json
 
-from settings import Settings
-
 
 class Code(object):
-    def __init__(self, code, context, modules):
+    def __init__(self, code, context, modules=None, language='javascript'):
         self.code = code
         self.context = context
-        self.language = 'javascript'
+        self.language = language
         self.modules = modules if modules else []
         self.execution_result = None
 
@@ -22,9 +20,9 @@ class Code(object):
             }
         )
 
-    def run(self):
+    def run(self, host, port):
         request_params = urllib.request.Request(
-            url='http://{jse_host}:{jse_port}'.format(jse_host=Settings.JSE_HOST, jse_port=Settings.JSE_PORT),
+            url='http://{host}:{port}'.format(host=host, port=port),
             data=bytes(self.serialize(), encoding='utf-8'),
             method='POST',
             headers={'Content-type': 'application/json'}

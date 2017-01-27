@@ -66,7 +66,8 @@ def endpoint_handler_wrapper(endpoint_id):
         })
 
         try:
-            execution_result = Code(code=code_to_execute, context=code_execution_context, modules=[]).run()
+            code_instance = Code(code=code_to_execute, context=code_execution_context)
+            execution_result = code_instance.run(Settings.JSE_HOST, Settings.JSE_PORT)
         except HTTPError as error:
             return Response(response=error.read().decode('utf-8'),
                             status=200,
