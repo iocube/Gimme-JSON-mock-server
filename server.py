@@ -81,17 +81,13 @@ def endpoint_handler_wrapper(endpoint_id):
 
     return endpoint_handler
 
-if __name__ == '__main__':
-    # register all endpoints
-    all_endpoints = endpointDAO.find()
+# register all endpoints
+all_endpoints = endpointDAO.find()
 
-    for each in all_endpoints:
-        application.add_url_rule(
-            rule=each['route'],
-            endpoint=str(each['_id']),
-            view_func=endpoint_handler_wrapper(each['_id']),
-            methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-        )
-
-    application.run(port=Settings.PORT)
-
+for each in all_endpoints:
+    application.add_url_rule(
+        rule=each['route'],
+        endpoint=str(each['_id']),
+        view_func=endpoint_handler_wrapper(each['_id']),
+        methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    )
