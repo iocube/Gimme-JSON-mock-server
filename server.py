@@ -15,7 +15,7 @@ application = flask.Flask(__name__)
 application.config.from_object(Settings)
 
 
-@application.route('/server/', methods=['DELETE'])
+@application.route('/gimme-mock-server/', methods=['DELETE'])
 def restart():
     """
     Flask does not have method to restart server manually, to do it we'll
