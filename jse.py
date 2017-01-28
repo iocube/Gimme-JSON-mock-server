@@ -2,7 +2,7 @@ import urllib
 import json
 
 
-class Code(object):
+class JavaScriptExecuter(object):
     def __init__(self, code, context, modules=None, language='javascript'):
         self.code = code
         self.context = context
