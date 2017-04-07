@@ -22,7 +22,7 @@ class JavaScriptExecuter(object):
 
     def run(self, host, port):
         request_params = urllib.request.Request(
-            url='http://{host}:{port}'.format(host=host, port=port),
+            url='http://{host}:{port}/code'.format(host=host, port=port),
             data=bytes(self.serialize(), encoding='utf-8'),
             method='POST',
             headers={'Content-type': 'application/json'}
