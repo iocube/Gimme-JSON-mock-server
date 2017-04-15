@@ -3,7 +3,7 @@ import os
 from urllib.error import HTTPError
 
 import flask
-from flask import Response, request
+from flask import Response, request, views
 
 import js_code
 from dao import endpoint_dao, storage_dao
@@ -15,20 +15,36 @@ application = flask.Flask(__name__)
 application.config.from_object(Settings)
 
 
-@application.route('/gimme-mock-server/', methods=['DELETE'])
-def restart():
-    """
-    Flask does not have method to restart server manually, to do it we'll
-    update mtime for one of modules and that will trigger restart.
+class Server(views.MethodView):
+    decorators = [
+        crossdomain(methods=['OPTIONS', 'GET', 'DELETE'])
+    ]
 
-    This will work only if flask development server running with use_reloader=True.
+    def get(self):
+        """
+        Get server status.
+        """
 
-    Restart is needed if new endpoints were added to database.
-    """
-    os.utime(Settings.TOUCH_ME_TO_RELOAD, None)
-    return Response(response=json.dumps({}),
-                    status=200,
-                    mimetype='application/json')
+        return Response(
+            response=json.dumps({"status": "ok"}),
+            status=200,
+            mimetype='application/json'
+        )
+
+    def delete(self):
+        """
+        Restart server.
+        Flask does not have method to restart server manually, to do it we'll
+        update mtime for one of modules and that will trigger restart.
+
+        This will work only if flask development server running with use_reloader=True.
+
+        Restart is needed if new endpoints were added to database.
+        """
+        os.utime(Settings.TOUCH_ME_TO_RELOAD, None)
+        return Response(response=json.dumps({}),
+                        status=200,
+                        mimetype='application/json')
 
 
 def generic_route_handler(endpoint_id):
@@ -62,6 +78,8 @@ def generic_route_handler(endpoint_id):
                         mimetype='application/json')
 
     return wrapper
+
+application.add_url_rule('/gimme-mock-server/', view_func=Server.as_view('server'))
 
 # find all endpoints and register `generic_route_handler` as view_func for each of them
 for each_endpoint in endpoint_dao.find():
