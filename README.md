@@ -1,4 +1,4 @@
 # Mock server
 
 `$ . .env`
-`$ flask run --reload --debugger`
+`$ flask run -p 5001 --reload --debugger`
