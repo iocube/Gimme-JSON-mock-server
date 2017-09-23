@@ -59,7 +59,7 @@ def generic_route_handler(endpoint_id):
         # concatenate $g code and endpoint handler code
         code_to_execute = js_code.code_concat([
             js_code.prepare_g_object(flask_request=request, flask_router_args=kwargs),
-            endpoint[request.method.lower()]
+            endpoint['on_{method}'.format(method=request.method.lower())]
         ])
 
         try:
